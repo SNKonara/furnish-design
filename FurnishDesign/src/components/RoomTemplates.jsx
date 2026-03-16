@@ -1,13 +1,56 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import rmImg1 from '../assets/images/rt-img1.webp'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
+// Replace these placeholder paths with your real room images.
+// Example: import livingRoomImg from '../assets/images/living-room-real.jpg'
+import livingRoomImg from '../assets/images/rt-img1.webp'
+import livingRoomImg2 from '../assets/images/rt-img2.webp'
+import livingRoomImg3 from '../assets/images/rt-img3.webp'
+
+
+import bedRoomImg from '../assets/images/rt-img4.webp'
+import bedRoomImg2 from '../assets/images/rt-img5.webp'
+import bedRoomImg3 from '../assets/images/rt-img6.webp'
+
+import bathRoomImg from '../assets/images/rt-img7.webp'
+import bathRoomImg2 from '../assets/images/rt-img8.webp'
+
+import kitchenImg from '../assets/images/rt-img9.webp'
+
+import diningRoomImg from '../assets/images/rt-img10.webp'
+
+import officeImg from '../assets/images/rt-img13.webp'
+import studioImg from '../assets/images/rt-img12.webp'
+import entryImg from '../assets/images/rt-img11.webp'
+import { createWorkspaceDesignFromTemplate, savePendingTemplateDesign } from '../designState.js'
 import './roomTemplates.css'
+
+// Keep these keys exactly the same as each template's `room` value.
+// Update each value to the image import you want for that room.
+const ROOM_IMAGES = {
+  'Living Room': livingRoomImg,
+  'Living Room 2': livingRoomImg2,
+  'Living Room 3': livingRoomImg3,
+
+  Bedroom: bedRoomImg,
+  'Bedroom guest': bedRoomImg2,
+  'Bedroom kid': bedRoomImg3,
+
+
+  Bathroom: bathRoomImg,
+  Bathroom2: bathRoomImg2,
+
+  Kitchen: kitchenImg,
+  'Dining Room': diningRoomImg,
+  Office: officeImg,
+  Studio: studioImg,
+  Entry: entryImg,
+}
 
 const ALL_TEMPLATES = [
   {
     id: 1,
     title: 'Living Room – Modern',
-    room: 'Living Room',
+    room: 'Living Room 2',
     style: 'Modern',
     size: 'Large',
     rating: 5,
@@ -27,7 +70,7 @@ const ALL_TEMPLATES = [
   {
     id: 2,
     title: 'Living Room – Minimal',
-    room: 'Living Room',
+    room: 'Living Room 3',
     style: 'Minimalist',
     size: 'Medium',
     rating: 4,
@@ -62,7 +105,7 @@ const ALL_TEMPLATES = [
   {
     id: 4,
     title: 'Bedroom – Guest',
-    room: 'Bedroom',
+    room: 'Bedroom guest',
     style: 'Cozy',
     size: 'Medium',
     rating: 4,
@@ -77,7 +120,7 @@ const ALL_TEMPLATES = [
   {
     id: 5,
     title: "Kid's Bedroom",
-    room: 'Bedroom',
+    room: 'Bedroom kid',
     style: 'Playful',
     size: 'Medium',
     rating: 5,
@@ -107,7 +150,7 @@ const ALL_TEMPLATES = [
   {
     id: 7,
     title: 'Bathroom – Compact',
-    room: 'Bathroom',
+    room: 'Bathroom2',
     style: 'Modern',
     size: 'Small',
     rating: 3,
@@ -229,7 +272,12 @@ function StarRating({ count }) {
   )
 }
 
+function getTemplateImage(room) {
+  return ROOM_IMAGES[room] || livingRoomImg
+}
+
 export default function RoomTemplates() {
+  const navigate = useNavigate()
   const [selected, setSelected] = useState(ALL_TEMPLATES[0])
   const [roomFilter, setRoomFilter] = useState('All Rooms')
   const [styleFilter, setStyleFilter] = useState('All Styles')
@@ -258,6 +306,12 @@ export default function RoomTemplates() {
     }
   }
 
+  function openTemplateInWorkspace(template) {
+    const workspaceSeed = createWorkspaceDesignFromTemplate(template)
+    savePendingTemplateDesign(workspaceSeed)
+    navigate('/workspace', { state: { workspaceSeed } })
+  }
+
   return (
     <main className="rt-page">
       <div className="rt-shell">
@@ -270,12 +324,17 @@ export default function RoomTemplates() {
               <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Dashboard
               </NavLink>
-              <a href="#">Collections</a>
+              <NavLink to="/catalog" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Catalog
+              </NavLink>
               <NavLink to="/workspace" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Workspace
               </NavLink>
               <NavLink to="/templates" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Templates
+              </NavLink>
+              <NavLink to="/profile" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Profile
               </NavLink>
             </nav>
           </div>
@@ -287,7 +346,10 @@ export default function RoomTemplates() {
               </svg>
               <input id="rt-top-search" type="search" placeholder="Search assets..." />
             </label>
-            <button type="button" aria-label="Profile" className="rt-avatar-btn">FD</button>
+            <button type="button" className="rt-logout-btn" onClick={() => navigate('/')}>
+              Logout
+            </button>
+            <Link to="/profile" aria-label="Profile" className="rt-avatar-btn">FD</Link>
           </div>
         </header>
 
@@ -361,7 +423,7 @@ export default function RoomTemplates() {
                     aria-pressed={selected?.id === t.id}
                   >
                     <div className="rt-card-img">
-                      <img src={placeholderImage} alt={t.title} />
+                      <img src={getTemplateImage(t.room)} alt={t.title} />
                     </div>
                     <div className="rt-card-body">
                       <h3>{t.title}</h3>
@@ -372,7 +434,11 @@ export default function RoomTemplates() {
                       <button
                         type="button"
                         className="rt-use-btn"
-                        onClick={(e) => { e.stopPropagation(); setSelected(t) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelected(t)
+                          openTemplateInWorkspace(t)
+                        }}
                       >
                         Use Template
                       </button>
@@ -421,7 +487,7 @@ export default function RoomTemplates() {
             <aside className="rt-detail">
               {selected.featured && <div className="rt-featured-badge">Featured Choice</div>}
               <div className="rt-detail-img">
-                <img src={placeholderImage} alt={selected.title} />
+                <img src={getTemplateImage(selected.room)} alt={selected.title} />
               </div>
               <div className="rt-detail-body">
                 <div className="rt-detail-title-row">
@@ -471,7 +537,14 @@ export default function RoomTemplates() {
                   </ul>
                 </div>
 
-                <Link to="/workspace" className="rt-open-btn">
+                <Link
+                  to="/workspace"
+                  state={{ workspaceSeed: createWorkspaceDesignFromTemplate(selected) }}
+                  className="rt-open-btn"
+                  onClick={() => {
+                    savePendingTemplateDesign(createWorkspaceDesignFromTemplate(selected))
+                  }}
+                >
                   Open in Workspace →
                 </Link>
               </div>
@@ -486,6 +559,7 @@ export default function RoomTemplates() {
           </div>
           <nav aria-label="Footer links">
             <Link to="/dashboard">Dashboard</Link>
+            <Link to="/catalog">Catalog</Link>
             <a href="#">Help Center</a>
             <a href="#">Terms of Service</a>
             <a href="#">Privacy Policy</a>

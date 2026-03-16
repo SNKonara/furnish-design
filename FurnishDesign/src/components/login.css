@@ -28,14 +28,13 @@ body {
   font-family: var(--ui-font);
   color: var(--ink);
   background:
-    radial-gradient(circle at 18% 12%, #22314a 0%, transparent 40%),
-    radial-gradient(circle at 82% 88%, #1f2f26 0%, transparent 33%),
-    var(--bg);
-  padding: 18px;
+    radial-gradient(circle at 18% 12%, rgba(34, 49, 74, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 82% 88%, rgba(31, 47, 38, 0.1) 0%, transparent 33%),
+    #eef1f5;
 }
 
 .page-shell {
-  min-height: calc(100vh - 36px);
+  min-height: 100vh;
   display: grid;
   place-items: center;
 }
@@ -106,22 +105,15 @@ body {
 }
 
 .brand-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  border: 2px solid #8d7966;
-  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
+  border: 0;
+  background: transparent url('../assets/images/logo.jpeg') center / contain no-repeat;
 }
 
 .brand-mark::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  border: 2px solid #8d7966;
-  position: absolute;
-  top: 5px;
-  left: 5px;
+  content: none;
 }
 
 .live-pill {

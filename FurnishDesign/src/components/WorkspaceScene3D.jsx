@@ -1,5 +1,6 @@
-<img src={rmImg1} alt={t.title} />
-<img src={rmImg1} alt={selected.title} />import { Canvas } from '@react-three/fiber'
+import { useMemo } from 'react'
+import * as THREE from 'three'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 
 function floorToneColor(floorTone) {
@@ -18,6 +19,71 @@ function floorToneColor(floorTone) {
   }
 
   return '#f4efe6'
+}
+
+function footprintFromRoom(roomShape, roomWidthMeters, roomDepthMeters) {
+  if (roomShape === 'square') {
+    const size = Math.max(Math.min(roomWidthMeters, roomDepthMeters), 2.4)
+    return [
+      [-size / 2, -size / 2],
+      [size / 2, -size / 2],
+      [size / 2, size / 2],
+      [-size / 2, size / 2],
+    ]
+  }
+
+  if (roomShape === 'l-shape') {
+    const notchWidth = roomWidthMeters * 0.34
+    const notchDepth = roomDepthMeters * 0.36
+
+    return [
+      [-roomWidthMeters / 2, -roomDepthMeters / 2],
+      [roomWidthMeters / 2, -roomDepthMeters / 2],
+      [roomWidthMeters / 2, roomDepthMeters / 2 - notchDepth],
+      [roomWidthMeters / 2 - notchWidth, roomDepthMeters / 2 - notchDepth],
+      [roomWidthMeters / 2 - notchWidth, roomDepthMeters / 2],
+      [-roomWidthMeters / 2, roomDepthMeters / 2],
+    ]
+  }
+
+  return [
+    [-roomWidthMeters / 2, -roomDepthMeters / 2],
+    [roomWidthMeters / 2, -roomDepthMeters / 2],
+    [roomWidthMeters / 2, roomDepthMeters / 2],
+    [-roomWidthMeters / 2, roomDepthMeters / 2],
+  ]
+}
+
+function floorShapeFromFootprint(footprint) {
+  const shape = new THREE.Shape()
+
+  footprint.forEach(([x, z], index) => {
+    if (index === 0) {
+      shape.moveTo(x, z)
+      return
+    }
+
+    shape.lineTo(x, z)
+  })
+
+  shape.closePath()
+  return shape
+}
+
+function wallSegmentsFromFootprint(footprint, roomHeightMeters) {
+  return footprint.map((point, index) => {
+    const nextPoint = footprint[(index + 1) % footprint.length]
+    const deltaX = nextPoint[0] - point[0]
+    const deltaZ = nextPoint[1] - point[1]
+    const length = Math.hypot(deltaX, deltaZ)
+
+    return {
+      key: `wall-${index}`,
+      position: [(point[0] + nextPoint[0]) / 2, roomHeightMeters / 2, (point[1] + nextPoint[1]) / 2],
+      rotation: [0, -Math.atan2(deltaZ, deltaX), 0],
+      args: [length, roomHeightMeters, 0.08],
+    }
+  })
 }
 
 function wallFeaturePosition(feature, roomWidthMeters, roomDepthMeters) {
@@ -62,11 +128,21 @@ export default function WorkspaceScene3D({
   selectedItemId,
   selectedFeatureId,
 }) {
+  const roomShape = roomDetails.shape || 'rectangle'
   const roomWidthMeters = Math.max(roomDetails.width / 100, 2.4)
   const roomDepthMeters = Math.max(roomDetails.depth / 100, 2.4)
   const roomHeightMeters = Math.max(roomDetails.height / 100, 2.2)
   const wallColor = roomDetails.wallColor || '#f7f7f5'
   const floorColor = floorToneColor(roomDetails.floorTone)
+  const footprint = useMemo(
+    () => footprintFromRoom(roomShape, roomWidthMeters, roomDepthMeters),
+    [roomDepthMeters, roomShape, roomWidthMeters],
+  )
+  const floorShape = useMemo(() => floorShapeFromFootprint(footprint), [footprint])
+  const wallSegments = useMemo(
+    () => wallSegmentsFromFootprint(footprint, roomHeightMeters),
+    [footprint, roomHeightMeters],
+  )
 
   return (
     <Canvas shadows dpr={[1, 2]} gl={{ antialias: true }}>
@@ -85,24 +161,21 @@ export default function WorkspaceScene3D({
 
       <group>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
-          <planeGeometry args={[roomWidthMeters, roomDepthMeters]} />
+          <shapeGeometry args={[floorShape]} />
           <meshStandardMaterial color={floorColor} roughness={0.92} />
         </mesh>
 
-        <mesh position={[0, roomHeightMeters / 2, -roomDepthMeters / 2]} receiveShadow>
-          <boxGeometry args={[roomWidthMeters, roomHeightMeters, 0.08]} />
-          <meshStandardMaterial color={wallColor} roughness={0.95} />
-        </mesh>
-
-        <mesh position={[-roomWidthMeters / 2, roomHeightMeters / 2, 0]} receiveShadow>
-          <boxGeometry args={[0.08, roomHeightMeters, roomDepthMeters]} />
-          <meshStandardMaterial color={wallColor} roughness={0.94} />
-        </mesh>
-
-        <mesh position={[roomWidthMeters / 2, roomHeightMeters / 2, 0]} receiveShadow>
-          <boxGeometry args={[0.08, roomHeightMeters, roomDepthMeters]} />
-          <meshStandardMaterial color={wallColor} roughness={0.94} />
-        </mesh>
+        {wallSegments.map((segment) => (
+          <mesh
+            key={segment.key}
+            position={segment.position}
+            rotation={segment.rotation}
+            receiveShadow
+          >
+            <boxGeometry args={segment.args} />
+            <meshStandardMaterial color={wallColor} roughness={0.95} />
+          </mesh>
+        ))}
       </group>
 
       {roomFeatures.map((feature) => {

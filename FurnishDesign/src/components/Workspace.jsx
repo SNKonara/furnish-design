@@ -1,146 +1,23 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import desk1 from '../assets/images/desk1.webp'
-import placeholderImage from '../assets/dummy-hero-room.svg'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import {
+  ROOM_SHAPE_OPTIONS,
+  clamp,
+  createDefaultWorkspaceDesign,
+  createPlacedItemSnapshot,
+  createRoomFeatureSnapshot,
+  loadPendingTemplateDesign,
+  loadSavedWorkspaceDesign,
+  normalizeWorkspaceDesign,
+  saveWorkspaceDesign,
+  clearPendingTemplateDesign,
+} from '../designState.js'
+import { catalogAssets } from '../data/catalogData.js'
 import './workspace.css'
 
 const WorkspaceScene3D = lazy(() => import('./WorkspaceScene3D.jsx'))
 
-const catalogAssets = [
-  {
-    id: 'sofa',
-    name: 'Scandi Oak Sofa',
-    category: 'Seating',
-    width: 220,
-    depth: 95,
-    height: 83,
-    price: 1249,
-    image: desk1,
-    accent: '#cab39a',
-    tone: '#c4ad95',
-  },
-  {
-    id: 'desk',
-    name: 'Minimalist Desk',
-    category: 'Work',
-    width: 160,
-    depth: 70,
-    height: 76,
-    price: 980,
-    image: placeholderImage,
-    accent: '#dbcdbd',
-    tone: '#cfae8a',
-  },
-  {
-    id: 'lamp',
-    name: 'Arc Floor Lamp',
-    category: 'Lighting',
-    width: 48,
-    depth: 48,
-    height: 165,
-    price: 340,
-    image: placeholderImage,
-    accent: '#efe7dc',
-    tone: '#ddd6cb',
-  },
-  {
-    id: 'armchair',
-    name: 'Velvet Armchair',
-    category: 'Seating',
-    width: 92,
-    depth: 82,
-    height: 88,
-    price: 710,
-    image: placeholderImage,
-    accent: '#7b593d',
-    tone: '#8a6348',
-  },
-  {
-    id: 'shelf',
-    name: 'Floating Shelf',
-    category: 'Storage',
-    width: 120,
-    depth: 30,
-    height: 100,
-    price: 410,
-    image: placeholderImage,
-    accent: '#ece5d8',
-    tone: '#e7ddcf',
-  },
-  {
-    id: 'credenza',
-    name: 'Walnut Credenza',
-    category: 'Storage',
-    width: 180,
-    depth: 45,
-    height: 72,
-    price: 1100,
-    image: placeholderImage,
-    accent: '#8b5d40',
-    tone: '#8c5f43',
-  },
-]
-
-const initialPlacedItems = [
-  {
-    instanceId: 'placed-sofa-1',
-    assetId: 'sofa',
-    x: 50,
-    y: 63,
-    rotation: 0,
-    scale: 1,
-  },
-]
-
-const initialRoomFeatures = [
-  {
-    id: 'window-1',
-    type: 'window',
-    wall: 'north',
-    width: 140,
-    height: 110,
-    offset: 52,
-    base: 92,
-  },
-  {
-    id: 'door-1',
-    type: 'door',
-    wall: 'east',
-    width: 92,
-    height: 210,
-    offset: 46,
-    base: 0,
-  },
-]
-
 const wallOptions = ['north', 'east', 'south', 'west']
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function createPlacedItem(asset, x = 50, y = 62) {
-  return {
-    instanceId: `${asset.id}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
-    assetId: asset.id,
-    x,
-    y,
-    rotation: 0,
-    scale: 1,
-  }
-}
-
-function createRoomFeature(type) {
-  return {
-    id: `${type}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
-    type,
-    wall: type === 'window' ? 'north' : 'east',
-    width: type === 'window' ? 140 : 92,
-    height: type === 'window' ? 110 : 210,
-    offset: 50,
-    base: type === 'window' ? 90 : 0,
-  }
-}
 
 function openingMarkerStyle(feature, roomDetails) {
   const horizontal = feature.wall === 'north' || feature.wall === 'south'
@@ -181,26 +58,57 @@ function openingMarkerStyle(feature, roomDetails) {
   }
 }
 
+function roomShapeClipPath(shape) {
+  if (shape === 'l-shape') {
+    return 'polygon(0 0, 100% 0, 100% 64%, 66% 64%, 66% 100%, 0 100%)'
+  }
+
+  return 'none'
+}
+
+function fittedZoom(roomDetails) {
+  const referenceArea = 520 * 380
+  const width = Math.max(Number(roomDetails.width) || 0, 1)
+  const depth = Math.max(Number(roomDetails.depth) || 0, 1)
+  const shapeFactor = roomDetails.shape === 'l-shape' ? 0.78 : 1
+  const roomArea = width * depth * shapeFactor
+
+  return clamp(Math.round(125 * Math.sqrt(referenceArea / roomArea)), 80, 160)
+}
+
+function roomSurfaceStyle(roomDetails, zoom) {
+  const isSquare = roomDetails.shape === 'square'
+
+  return {
+    transform: `translate(-50%, -50%) scale(${zoom / 125})`,
+    '--room-wall-color': roomDetails.wallColor,
+    clipPath: roomShapeClipPath(roomDetails.shape),
+    width: isSquare ? 'min(54%, 460px)' : 'min(72%, 760px)',
+    height: isSquare ? 'min(54%, 460px)' : 'min(54%, 420px)',
+  }
+}
+
 export default function Workspace() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const stageRef = useRef(null)
   const dragStateRef = useRef(null)
+  const initialWorkspace = useMemo(
+    () => loadSavedWorkspaceDesign() || createDefaultWorkspaceDesign(),
+    [],
+  )
 
-  const [viewMode, setViewMode] = useState('3d')
-  const [zoom, setZoom] = useState(125)
+  const [viewMode, setViewMode] = useState(initialWorkspace.viewMode)
+  const [zoom, setZoom] = useState(initialWorkspace.zoom)
   const [searchText, setSearchText] = useState('')
-  const [roomDetails, setRoomDetails] = useState({
-    name: 'Scene Living Room 01',
-    width: 520,
-    depth: 380,
-    height: 290,
-    style: 'Scandi / Oak',
-    wallColor: '#f7f7f5',
-    floorTone: 'Natural Oak',
-  })
-  const [placedItems, setPlacedItems] = useState(initialPlacedItems)
-  const [roomFeatures, setRoomFeatures] = useState(initialRoomFeatures)
-  const [selectedItemId, setSelectedItemId] = useState(initialPlacedItems[0].instanceId)
-  const [selectedFeatureId, setSelectedFeatureId] = useState(initialRoomFeatures[0].id)
+  const [roomDetails, setRoomDetails] = useState(initialWorkspace.roomDetails)
+  const [placedItems, setPlacedItems] = useState(initialWorkspace.placedItems)
+  const [roomFeatures, setRoomFeatures] = useState(initialWorkspace.roomFeatures)
+  const [selectedItemId, setSelectedItemId] = useState(initialWorkspace.placedItems[0]?.instanceId || '')
+  const [selectedFeatureId, setSelectedFeatureId] = useState(initialWorkspace.roomFeatures[0]?.id || '')
+  const [workspaceNotice, setWorkspaceNotice] = useState(
+    loadSavedWorkspaceDesign() ? 'Saved design restored from this browser.' : 'Design changes stay local until you save.',
+  )
 
   const assetsById = useMemo(
     () => Object.fromEntries(catalogAssets.map((asset) => [asset.id, asset])),
@@ -226,6 +134,44 @@ export default function Workspace() {
     const asset = assetsById[item.assetId]
     return sum + (asset ? asset.price : 0)
   }, 0)
+
+  useEffect(() => {
+    const workspaceSeed = location.state?.workspaceSeed || loadPendingTemplateDesign()
+
+    if (!workspaceSeed) {
+      return
+    }
+
+    const nextDesign = normalizeWorkspaceDesign(workspaceSeed)
+    setRoomDetails(nextDesign.roomDetails)
+    setPlacedItems(nextDesign.placedItems)
+    setRoomFeatures(nextDesign.roomFeatures)
+    setViewMode(nextDesign.viewMode)
+    setZoom(nextDesign.zoom)
+    setSelectedItemId(nextDesign.placedItems[0]?.instanceId || '')
+    setSelectedFeatureId(nextDesign.roomFeatures[0]?.id || '')
+    setWorkspaceNotice(`Template loaded: ${nextDesign.roomDetails.name}`)
+    clearPendingTemplateDesign()
+  }, [location.key, location.state])
+
+  useEffect(() => {
+    const catalogAssetId = location.state?.catalogAssetId
+
+    if (!catalogAssetId) {
+      return
+    }
+
+    const asset = assetsById[catalogAssetId]
+    if (!asset) {
+      return
+    }
+
+    const newItem = createPlacedItemSnapshot(asset.id)
+    setPlacedItems((currentItems) => [...currentItems, newItem])
+    setSelectedItemId(newItem.instanceId)
+    setSelectedFeatureId('')
+    setWorkspaceNotice(`${asset.name} added from the catalog.`)
+  }, [assetsById, location.key, location.state])
 
   useEffect(() => {
     function handlePointerMove(event) {
@@ -276,11 +222,12 @@ export default function Workspace() {
     const rect = stageRef.current.getBoundingClientRect()
     const x = clamp(((event.clientX - rect.left) / rect.width) * 100, 9, 91)
     const y = clamp(((event.clientY - rect.top) / rect.height) * 100, 16, 88)
-    const newItem = createPlacedItem(asset, x, y)
+    const newItem = createPlacedItemSnapshot(asset.id, { x, y })
 
     setPlacedItems((currentItems) => [...currentItems, newItem])
     setSelectedItemId(newItem.instanceId)
     setSelectedFeatureId('')
+    setWorkspaceNotice('Furniture added. Save to keep this layout.')
   }
 
   function handleStageDragOver(event) {
@@ -295,10 +242,11 @@ export default function Workspace() {
   }
 
   function addAssetToScene(asset) {
-    const newItem = createPlacedItem(asset)
+    const newItem = createPlacedItemSnapshot(asset.id)
     setPlacedItems((currentItems) => [...currentItems, newItem])
     setSelectedItemId(newItem.instanceId)
     setSelectedFeatureId('')
+    setWorkspaceNotice('Furniture added. Save to keep this layout.')
   }
 
   function removeSelectedItem() {
@@ -311,14 +259,16 @@ export default function Workspace() {
     )
     setPlacedItems(remainingItems)
     setSelectedItemId(remainingItems[0] ? remainingItems[0].instanceId : '')
+    setWorkspaceNotice('Selected furniture removed from the layout.')
   }
 
   function addRoomFeature(type) {
-    const nextFeature = createRoomFeature(type)
+    const nextFeature = createRoomFeatureSnapshot(type)
     setRoomFeatures((current) => [...current, nextFeature])
     setSelectedFeatureId(nextFeature.id)
     setSelectedItemId('')
     setViewMode('2d')
+    setWorkspaceNotice(`${type === 'window' ? 'Window' : 'Door'} added to the room shell.`)
   }
 
   function removeSelectedFeature() {
@@ -329,10 +279,15 @@ export default function Workspace() {
     const remainingFeatures = roomFeatures.filter((feature) => feature.id !== selectedFeature.id)
     setRoomFeatures(remainingFeatures)
     setSelectedFeatureId(remainingFeatures[0] ? remainingFeatures[0].id : '')
+    setWorkspaceNotice('Selected opening removed from the room shell.')
   }
 
   function updateRoomDetail(field, value) {
     setRoomDetails((current) => ({ ...current, [field]: value }))
+
+    if (field === 'shape') {
+      setWorkspaceNotice(`Room shape changed to ${value}.`)
+    }
   }
 
   function updateSelectedItem(field, value) {
@@ -346,6 +301,7 @@ export default function Workspace() {
         item.instanceId === selectedPlacedItem.instanceId ? { ...item, [field]: normalizedValue } : item,
       ),
     )
+    setWorkspaceNotice('Furniture properties updated.')
   }
 
   function updateSelectedFeature(field, value) {
@@ -358,6 +314,43 @@ export default function Workspace() {
         feature.id === selectedFeature.id ? { ...feature, [field]: value } : feature,
       ),
     )
+    setWorkspaceNotice('Opening properties updated.')
+  }
+
+  function handleSaveDesign() {
+    const saved = saveWorkspaceDesign({
+      roomDetails,
+      placedItems,
+      roomFeatures,
+      viewMode,
+      zoom,
+    })
+
+    setWorkspaceNotice(saved ? 'Design saved to this browser.' : 'Saving failed in this browser.')
+  }
+
+  function handleLoadSavedDesign() {
+    const savedDesign = loadSavedWorkspaceDesign()
+
+    if (!savedDesign) {
+      setWorkspaceNotice('No saved design found on this browser.')
+      return
+    }
+
+    setRoomDetails(savedDesign.roomDetails)
+    setPlacedItems(savedDesign.placedItems)
+    setRoomFeatures(savedDesign.roomFeatures)
+    setViewMode(savedDesign.viewMode)
+    setZoom(savedDesign.zoom)
+    setSelectedItemId(savedDesign.placedItems[0]?.instanceId || '')
+    setSelectedFeatureId(savedDesign.roomFeatures[0]?.id || '')
+    setWorkspaceNotice('Saved design loaded.')
+  }
+
+  function handleFitStage() {
+    const nextZoom = fittedZoom(roomDetails)
+    setZoom(nextZoom)
+    setWorkspaceNotice(`Viewport fitted to the ${roomDetails.shape} room shell.`)
   }
 
   function renderStageItem(item) {
@@ -426,9 +419,17 @@ export default function Workspace() {
               <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Dashboard
               </NavLink>
-              <a href="#">Collections</a>
+              <NavLink to="/catalog" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Catalog
+              </NavLink>
               <NavLink to="/workspace" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Workspace
+              </NavLink>
+              <NavLink to="/templates" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Templates
+              </NavLink>
+              <NavLink to="/profile" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Profile
               </NavLink>
             </nav>
           </div>
@@ -445,7 +446,10 @@ export default function Workspace() {
             <button type="button" className="workspace-icon-button" aria-label="Alerts">
               o
             </button>
-            <div className="workspace-profile-pill">FD</div>
+            <button type="button" className="workspace-logout-button" onClick={() => navigate('/')}>
+              Logout
+            </button>
+            <Link to="/profile" className="workspace-profile-pill" aria-label="Profile">FD</Link>
           </div>
         </header>
 
@@ -453,9 +457,9 @@ export default function Workspace() {
           <aside className="workspace-library-panel">
             <div className="workspace-panel-head">
               <strong>Asset Library</strong>
-              <button type="button" className="workspace-filter-button">
-                Filter
-              </button>
+              <Link to="/catalog" className="workspace-filter-button">
+                Browse Catalog
+              </Link>
             </div>
 
             <label className="workspace-library-search" htmlFor="library-search-input">
@@ -518,7 +522,7 @@ export default function Workspace() {
           <section className="workspace-stage-panel">
             <div className="workspace-toolbar">
               <div className="workspace-toolbar-group">
-                <button type="button">Fit</button>
+                <button type="button" onClick={handleFitStage}>Fit</button>
                 <button type="button" onClick={() => setZoom((current) => clamp(current - 10, 80, 160))}>
                   -
                 </button>
@@ -545,9 +549,14 @@ export default function Workspace() {
                 </button>
               </div>
 
-              <button type="button" className="workspace-render-button">
-                Export Render
-              </button>
+              <div className="workspace-toolbar-group workspace-save-actions">
+                <button type="button" onClick={handleLoadSavedDesign}>
+                  Load Saved
+                </button>
+                <button type="button" className="workspace-render-button" onClick={handleSaveDesign}>
+                  Save Design
+                </button>
+              </div>
             </div>
 
             <div
@@ -563,10 +572,7 @@ export default function Workspace() {
               {viewMode === '2d' ? (
                 <div
                   className="workspace-stage-room"
-                  style={{
-                    transform: `translate(-50%, -50%) scale(${zoom / 125})`,
-                    '--room-wall-color': roomDetails.wallColor,
-                  }}
+                  style={roomSurfaceStyle(roomDetails, zoom)}
                 >
                   <div className="workspace-room-back-wall" />
                   <div className="workspace-room-floor" />
@@ -594,9 +600,11 @@ export default function Workspace() {
               <span>{roomDetails.name}</span>
               <span>Assets: {placedItems.length} total</span>
               <span>View: {viewMode.toUpperCase()}</span>
+              <span>Shape: {roomDetails.shape}</span>
               <span>
                 Room: {roomDetails.width} x {roomDetails.depth} x {roomDetails.height} cm
               </span>
+              <span>{workspaceNotice}</span>
             </div>
           </section>
 
@@ -617,6 +625,19 @@ export default function Workspace() {
               </label>
 
               <div className="workspace-input-grid">
+                <label>
+                  Shape
+                  <select
+                    value={roomDetails.shape}
+                    onChange={(event) => updateRoomDetail('shape', event.target.value)}
+                  >
+                    {ROOM_SHAPE_OPTIONS.map((shape) => (
+                      <option key={shape} value={shape}>
+                        {shape}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   Width
                   <input

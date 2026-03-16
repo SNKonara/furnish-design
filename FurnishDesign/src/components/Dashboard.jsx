@@ -1,25 +1,27 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import placeholderImage from '../assets/dummy-hero-room.svg'
-import image1 from '../assets/images/desk1.webp'
-import image4 from '../assets/images/dash_4.webp'
+import image4 from '../assets/images/desk1.webp'
+import nordic from '../assets/images/nordic.webp'
+import zenroom from '../assets/images/zen.webp'
+import roomStudioImage from '../assets/images/velvet.jpg'
+import { catalogAssets } from '../data/catalogData.js'
+
 import './dashboard.css'
 
 const templateCards = [
-  { title: 'Nordic Living', subtitle: 'Clean lines and warm oak textures' },
-  { title: 'Zen Workspace', subtitle: 'Focus-driven minimal environments' },
-  { title: 'Velvet Lounge', subtitle: 'Rich textures with ambient lighting' },
+  { title: 'Nordic Living', subtitle: 'Clean lines and warm oak textures', image: nordic },
+  { title: 'Zen Workspace', subtitle: 'Focus-driven minimal environments', image: zenroom },
+  { title: 'Velvet Lounge', subtitle: 'Rich textures with ambient lighting', image: roomStudioImage },
 ]
 
-const productCards = [
-  { tag: 'New', category: 'SEATING', name: 'Seven Lounge Chair', price: '$849' },
-  { tag: 'Top', category: 'TABLE', name: 'Apex Standing Desk', price: '$1,299' },
-  { tag: 'Hot', category: 'LIGHTING', name: 'Luxen Pendant', price: '$320' },
-  { tag: 'Save', category: 'STORAGE', name: 'Mod Shelf Unit', price: '$450' },
-  { tag: 'Pro', category: 'SEATING', name: 'Ermes Inspired Task', price: '$299' },
-  { tag: 'New', category: 'LIGHTING', name: 'Brushed Brass Lamp', price: '$180' },
-  { tag: 'Top', category: 'STORAGE', name: 'Oak Veneer Credenza', price: '$1,100' },
-  { tag: 'Hot', category: 'SEATING', name: 'Suede Accent Pouf', price: '$120' },
-]
+const productCards = catalogAssets.slice(0, 8).map((asset) => ({
+  tag: asset.tag,
+  category: asset.category.toUpperCase(),
+  name: asset.name,
+  price: `$${asset.price.toLocaleString()}`,
+  image: asset.image,
+  id: asset.id,
+}))
 
 const ctaFeatures = [
   { title: 'AI Assistant', text: 'Generate smart layouts automatically.' },
@@ -29,6 +31,8 @@ const ctaFeatures = [
 ]
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+
   return (
     <main className="dash-page">
       <div className="dash-shell">
@@ -42,9 +46,17 @@ export default function Dashboard() {
               <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Dashboard
               </NavLink>
-              <a href="#">Collections</a>
+              <NavLink to="/catalog" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Catalog
+              </NavLink>
               <NavLink to="/workspace" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
                 Workspace
+              </NavLink>
+              <NavLink to="/templates" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Templates
+              </NavLink>
+              <NavLink to="/profile" className={({ isActive }) => (isActive ? 'is-active' : undefined)}>
+                Profile
               </NavLink>
             </nav>
           </div>
@@ -61,9 +73,12 @@ export default function Dashboard() {
             <button type="button" aria-label="Notifications" className="dash-icon-btn">
               o
             </button>
-            <button type="button" aria-label="Profile" className="dash-avatar-btn">
-              FD
+            <button type="button" className="dash-logout-btn" onClick={() => navigate('/')}>
+              Logout
             </button>
+            <Link to="/profile" aria-label="Profile" className="dash-avatar-btn">
+              FD
+            </Link>
           </div>
         </header>
 
@@ -84,9 +99,9 @@ export default function Dashboard() {
               <Link to="/workspace" className="dash-primary-btn">
                 Launch Workspace <span aria-hidden="true">&gt;</span>
               </Link>
-              <button type="button" className="dash-secondary-btn">
+              <Link to="/catalog" className="dash-secondary-btn">
                 View Catalog
-              </button>
+              </Link>
             </div>
             <div className="dash-joined-row">
               <div className="dash-avatar-stack" aria-hidden="true">
@@ -103,7 +118,7 @@ export default function Dashboard() {
 
           <article className="dash-feature-card">
             {/* TODO: Replace with your real hero/dashboard image */}
-            <img src={image1} alt="Dashboard hero placeholder" />
+            <img src={image4} alt="Dashboard hero placeholder" />
             <div className="dash-feature-label">
               <span>FEATURED LAYOUT</span>
               <strong>Nordic Minimalist Suite</strong>
@@ -143,7 +158,7 @@ export default function Dashboard() {
             {templateCards.map((card) => (
               <article key={card.title} className="dash-template-card">
                 {/* TODO: Replace with real room template image */}
-                <img src={placeholderImage} alt={`${card.title} placeholder`} />
+                <img src={card.image ?? placeholderImage} alt={`${card.title} placeholder`} />
                 <div>
                   <h3>{card.title}</h3>
                   <p>{card.subtitle}</p>
@@ -167,7 +182,7 @@ export default function Dashboard() {
             {productCards.map((card) => (
               <article key={card.name} className="dash-product-card">
                 {/* TODO: Replace with real product image */}
-                <img src={image4} alt={`${card.name} placeholder`} />
+                <img src={card.image ?? placeholderImage} alt={`${card.name} placeholder`} />
                 <div className="dash-product-meta">
                   <div className="dash-product-top">
                     <span>{card.category}</span>
@@ -180,9 +195,9 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <button type="button" className="dash-load-btn">
-            Load More Assets
-          </button>
+          <Link to="/catalog" className="dash-load-btn">
+            Browse Full Catalog
+          </Link>
         </section>
 
         <section className="dash-cta-block">
@@ -230,7 +245,7 @@ export default function Dashboard() {
           </div>
           <div>
             <h4>RESOURCES</h4>
-            <a href="#">Furniture Library</a>
+            <Link to="/catalog">Furniture Library</Link>
             <a href="#">Material Swatches</a>
             <a href="#">Rendering Engine</a>
           </div>

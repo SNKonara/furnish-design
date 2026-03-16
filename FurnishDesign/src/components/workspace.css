@@ -51,10 +51,11 @@
 }
 
 .workspace-brand-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: linear-gradient(135deg, var(--workspace-brown-soft), var(--workspace-brown));
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent url('../assets/images/logo.jpeg') center / contain no-repeat;
+  border: 0;
 }
 
 .workspace-brand-name {
@@ -133,6 +134,15 @@
   cursor: pointer;
 }
 
+.workspace-logout-button {
+  border: 1px solid var(--workspace-line);
+  border-radius: 999px;
+  background: #fafafa;
+  color: #5c5d64;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
 .workspace-profile-pill {
   width: 28px;
   height: 28px;
@@ -143,6 +153,7 @@
   place-items: center;
   font-size: 11px;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .workspace-layout {
@@ -190,6 +201,7 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .workspace-library-search {
@@ -306,6 +318,10 @@
   padding: 0 6px;
   border-left: 1px solid var(--workspace-line);
   border-right: 1px solid var(--workspace-line);
+}
+
+.workspace-save-actions {
+  padding-left: 2px;
 }
 
 .workspace-view-switcher .is-active,

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
+  <title id="title">Dining Room</title>
+  <desc id="desc">Stylized dining room illustration.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#edd8cf" />
+      <stop offset="100%" stop-color="#cf9a84" />
+    </linearGradient>
+  </defs>
+  <rect width="960" height="640" fill="url(#bg)" />
+  <ellipse cx="480" cy="390" rx="250" ry="92" fill="#f8eee9" />
+  <rect x="420" y="250" width="120" height="170" rx="14" fill="#7e4f3f" />
+  <rect x="250" y="265" width="80" height="125" rx="12" fill="#7e4f3f" />
+  <rect x="630" y="265" width="80" height="125" rx="12" fill="#7e4f3f" />
+  <circle cx="480" cy="175" r="42" fill="#f7e6cc" />
+  <text x="60" y="90" font-family="Georgia, serif" font-size="52" fill="#4c2b22">Dining Room</text>
+</svg>

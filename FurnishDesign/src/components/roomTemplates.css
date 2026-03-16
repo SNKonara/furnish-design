@@ -20,7 +20,6 @@
 .rt-page {
   min-height: 100vh;
   background: radial-gradient(circle at 8% 4%, #f4f4f4 0%, transparent 30%), var(--rt-bg);
-  padding: 12px;
   color: var(--rt-ink);
   font-family: var(--rt-ui);
 }
@@ -53,10 +52,11 @@
 }
 
 .rt-brand-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: linear-gradient(140deg, var(--rt-brown-soft) 0%, var(--rt-brown) 100%);
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent url('../assets/images/logo.jpeg') center / contain no-repeat;
+  border: 0;
   flex-shrink: 0;
 }
 
@@ -123,9 +123,23 @@
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
+  display: grid;
+  place-items: center;
 }
 
 /* ── Body layout ── */
+.rt-logout-btn {
+  border: 1px solid var(--rt-line);
+  border-radius: 999px;
+  background: #f7f7f8;
+  color: #5e5d65;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .rt-body {
   display: grid;
   grid-template-columns: 1fr 300px;

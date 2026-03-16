@@ -1,7 +1,10 @@
-import heroPlaceholder from '../assets/dummy-hero-room.svg'
+import heroPlaceholder from '../assets/images/login.jpg'
+import { useNavigate } from 'react-router-dom'
 import './login.css'
 
 export default function Login() {
+  const navigate = useNavigate()
+
   return (
     <main className="page-shell">
       <section className="studio-card">
@@ -65,7 +68,12 @@ export default function Login() {
             <h2>Welcome Back</h2>
             <p>Please enter your in-house credentials to access the design studio.</p>
 
-            <form onSubmit={(event) => event.preventDefault()}>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                navigate('/dashboard')
+              }}
+            >
               <label htmlFor="work-email">Work Email</label>
               <input
                 id="work-email"

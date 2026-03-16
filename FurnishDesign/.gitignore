@@ -12,6 +12,26 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Cache and build artifacts
+.cache
+.vite
+coverage
+*.tsbuildinfo
+
+# OS files
+Thumbs.db
+
+# Python (project includes requirements.txt)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
